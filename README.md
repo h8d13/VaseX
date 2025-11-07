@@ -10,9 +10,8 @@ Using bash only.
 
 - https://wiki.artixlinux.org/Main/InstallationWithFullDiskEncryption
 - https://github.com/paulphys/artix-fde
+- https://gitea.artixlinux.org/artix/artix-bootstrap/
 - https://wiki.artixlinux.org/Main/InstallationUsingBuildiso
-- https://github.com/gripped/artix-bootstrap
-
 
 
 

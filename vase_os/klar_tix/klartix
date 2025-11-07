@@ -517,7 +517,12 @@ show_progress "Making configuration script executable..."
 chmod +x "$TARGET_MOUNT/configure.sh"
 # Execute configuration in chroot
 show_progress "Executing system configuration in chroot..."
-chroot "$TARGET_MOUNT" /bin/bash /configure.sh
+# Use script to allocate a pseudo-TTY so pacman can display progress bars
+if command -v script >/dev/null 2>&1; then
+    script -q -c "chroot '$TARGET_MOUNT' /bin/bash /configure.sh" /dev/null
+else
+    chroot "$TARGET_MOUNT" /bin/bash /configure.sh
+fi
 show_progress "Cleaning up configuration script..."
 rm "$TARGET_MOUNT/configure.sh"
 # Cleanup

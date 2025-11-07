@@ -1,16 +1,7 @@
 [Desktop Entry]
 Icon=folder-log
-# th: c6b7aad33766398d2b2fa49a2b978973
+# th: 2a68074d0d3a10221921891dab595320
 
-├── node_modules
-│   ├── claude
-│   │   ├── package.json
-│   │   └── README.md
-│   └── .package-lock.json
-├── .vase.d
-│   ├── logs.conf
-│   ├── rcw
-│   └── vase.log
 ├── vase_os
 │   ├── grome_lum
 │   │   ├── lib
@@ -78,13 +69,13 @@ Icon=folder-log
 │   └── vase.svg
 ├── ...
 ├── .directory
+├── .gitignore
 ├── .gitmodules
 ├── LICENSE
-├── links
 ├── main
 ├── PKGBUILD
+├── README.md
 ├── upd_rm
-├── util_f
-└── vase
+└── util_f
 
-18 directories, 67 files
+15 directories, 61 files
