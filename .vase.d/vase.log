@@ -1,0 +1,111 @@
+[INFO] Logging to: /home/hadean/Desktop/VaseX/.vase.d/vase.log
+[INFO] Output dir strucs to .directory file...
+[+] Launching Klartix Artix Linux installer...
+=== [Klartix - Artix Linux Bootstrap Installer] ===
+
+[INFO] Current block devices:
+NAME        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+sdb           8:16   0 931.5G  0 disk 
+zram0       253:0    0     4G  0 disk [SWAP]
+nvme0n1     259:0    0 238.5G  0 disk 
+├─nvme0n1p1 259:1    0     1G  0 part /boot
+├─nvme0n1p2 259:2    0    32G  0 part /
+└─nvme0n1p3 259:3    0 205.5G  0 part /home
+
+Enter target disk: 
+[INFO] Installation layout:
+  Init system:  runit
+  Kernel:       linux
+  Filesystem:   ext4
+  Target disk:  /dev/sdb
+  EFI size:     1GiB
+  Boot:         /boot on root LV
+  Home:         /home on root LV
+  Swap:         zram
+  Encryption:   LVM on LUKS2 with pbkdf2
+
+[WARN] WARNING: This will ERASE ALL DATA on /dev/sdb!
+
+Continue with this disk? [y/N]: 
+===================================================
+
+Enter password for root: 
+Confirm root password: 
+Enter a username: Enter password for hadean: 
+Confirm user password: 
+
+[WARN] IMPORTANT: GRUB uses US keyboard layout at boot!
+[WARN] Your password will be typed with US layout even if you use 'us' now.
+[WARN] Avoid special characters that differ between layouts (e.g., shifted symbols).
+
+[INFO] LUKS encryption password options:
+  1) Reuse root password
+  2) Reuse user password
+  3) Use a different password
+
+Choose password option [1-3]: 
+[WARN] Test your password: after entering, type it again to verify characters match.
+
+Enter LUKS encryption password: 
+Confirm LUKS encryption password: 
+[INFO] Password length: 4 characters
+
+[INFO] Final configuration:
+  Hostname:     klartix
+  User:         hadean
+  Timezone:     Europe/Paris
+
+===================================================
+Begin installation? [y/N]: 
+[K[█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   3% (1/28)
+[INFO] Installing required packages on host...
+warning: wget-1.25.0-2 is up to date -- skipping
+warning: parted-3.6-2 is up to date -- skipping
+warning: lvm2-2.03.36-2 is up to date -- skipping
+warning: cryptsetup-2.8.1-1 is up to date -- skipping
+ there is nothing to do
+[K[███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   7% (2/28)
+[INFO] Cleaning up previous installation attempts...
+[K[█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  10% (3/28)
+[INFO] Partitioning /dev/sdb...
+[K[███████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  14% (4/28)
+[INFO] Updating kernel partition table...
+[K[████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  17% (5/28)
+[INFO] Setting up LUKS2 with pbkdf2...
+/dev/sdb2: 6 bytes were erased at offset 0x00000000 (crypto_LUKS): 4c 55 4b 53 ba be
+/dev/sdb2: 6 bytes were erased at offset 0x00004000 (crypto_LUKS): 53 4b 55 4c ba be
+[K[██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  21% (6/28)
+[INFO] Creating LUKS2 container with pbkdf2...
+[K[████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]  25% (7/28)
+[INFO] Setting up LVM volumes...
+  WARNING: Ignoring queue/optimal_io_size = 33553920 for device /dev/mapper/lvm-system (not divisible by 4KiB).
+  Physical volume "/dev/mapper/lvm-system" successfully created.
+  /dev/lvmSystem: already exists in filesystem
+  Run `vgcreate --help' for more information.
+[ERROR] Failed to create volume group
+=== [PERMS CHECK] ===
+[INFO] Running as elevated user...
+[INFO] Session type: wayland
+=====================
+=== [ENVIR CHECK] ===
+[+] Checking BUILD packages...
+[+] Found: git (2.51.2-2)
+[+] Found: archiso (87-1)
+[+] Found: gnupg (2.4.8-3)
+[+] Found: squashfs-tools (4.7.3-1)
+[+] Found: jq (1.8.1-1)
+[+] Found: tree (2.2.1-1)
+
+[INFO] All dependencies satisfied!
+[INFO] Running: echo "a/: $(du -sh "./vase_os/zazu_lago/a/" | cut -f1) ($(find "./vase_os/zazu_lago/a/" -type f | wc -l))"
+a/: 8.0K (1)
+[TIME] 5.213ms 【┘】
+[SUCCESS] Exit: 0 ✓
+[INFO] Running: echo "c/: $(du -sh "./vase_os/zazu_lago/c/" | cut -f1) ($(find "./vase_os/zazu_lago/c/" -type f | wc -l))"
+c/: 204K (2)
+[TIME] 3.439ms 【┘】
+[SUCCESS] Exit: 0 ✓
+=====================
+[INFO] Skipping... file already owned by hadean
+[-] Runtime: 42.276s
+[-] Cleaning up...

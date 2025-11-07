@@ -1,0 +1,90 @@
+[Desktop Entry]
+Icon=folder-log
+# th: c6b7aad33766398d2b2fa49a2b978973
+
+├── node_modules
+│   ├── claude
+│   │   ├── package.json
+│   │   └── README.md
+│   └── .package-lock.json
+├── .vase.d
+│   ├── logs.conf
+│   ├── rcw
+│   └── vase.log
+├── vase_os
+│   ├── grome_lum
+│   │   ├── lib
+│   │   │   ├── ckbcomp
+│   │   │   ├── ex_symbols.py
+│   │   │   ├── grub_toggle
+│   │   │   └── symap_main.py
+│   │   ├── testfiles
+│   │   │   └── grub
+│   │   ├── .directory
+│   │   ├── grome_lum
+│   │   ├── grub_keymaps
+│   │   ├── grub_passw
+│   │   └── grub_rescue
+│   ├── kaes_arch
+│   │   ├── assets
+│   │   │   ├── guides
+│   │   │   │   ├── avoid_bricks.sh
+│   │   │   │   ├── profile_code.sh
+│   │   │   │   ├── profile_git.sh
+│   │   │   │   └── very_nerds.sh
+│   │   │   ├── easy.kksrc
+│   │   │   ├── kaes-logo.png
+│   │   │   └── post_theme_broken
+│   │   ├── cli_art
+│   │   ├── CONTRIBUTING.md
+│   │   ├── .directory
+│   │   ├── .gitignore
+│   │   ├── LICENSE
+│   │   ├── post
+│   │   └── README.md
+│   ├── klar_tix
+│   │   ├── .directory
+│   │   ├── klartix
+│   │   ├── klartix.conf
+│   │   ├── klartix_plasma
+│   │   └── klatrix_sound
+│   ├── pacto_pac
+│   ├── zazu_lago
+│   │   ├── a
+│   │   │   └── .directory
+│   │   ├── c
+│   │   │   ├── .directory
+│   │   │   └── myvm0.qcow2
+│   │   ├── d
+│   │   │   └── .directory
+│   │   ├── iso_profiles
+│   │   │   ├── .directory
+│   │   │   ├── gnome_skinny.conf
+│   │   │   └── plasma_skinny.conf
+│   │   ├── cli_art
+│   │   ├── .directory
+│   │   ├── flash_iso
+│   │   ├── gen_sig
+│   │   ├── host_uptodate
+│   │   ├── iso_mod
+│   │   ├── setup_vms
+│   │   ├── ver_sig
+│   │   └── vm_start
+│   ├── clean_cache
+│   ├── cli_art
+│   ├── .directory
+│   ├── env
+│   ├── mindeps
+│   └── vase.svg
+├── ...
+├── .directory
+├── .gitmodules
+├── LICENSE
+├── links
+├── main
+├── PKGBUILD
+├── upd_rm
+├── util_f
+└── vase
+
+18 directories, 67 files

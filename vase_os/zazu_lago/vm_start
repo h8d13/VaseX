@@ -1,0 +1,387 @@
+#!/bin/bash
+
+. "$(dirname "$0")/../../util_f"
+. "$(dirname "$0")/../../..."
+
+script_dir="$(dirname "$0")"
+iso_dir_path="${script_dir}/${vm_d}/"
+iso_name="${script_dir}/${vm_d}/${iso_n}.$iso_ext"
+disks_dir_path="${script_dir}/c/"
+image_name="${script_dir}/c/${vm_name}.${vm_ext}"
+
+# Global state
+session_uuid=$(cat /proc/sys/kernel/random/uuid)
+short_uuid=$(echo "$session_uuid" | tr -d '-' | cut -c1-6)
+
+display="${qemu_display:-gtk}"
+gl="${qemu_gl:-off}"
+use_uefi="${qemu_uefi:-0}"  # Set to 0 for legacy BIOS mode
+use_clipboard="${qemu_clipboard:-0}"
+audio_backend="${qemu_audio:-pipewire}"
+audio_device="${qemu_audio_dev:-intel-hda}" 
+
+# Check for CATART setting and display CLI art
+if [ "${CATART}" = "1" ]; then
+    cat "${script_dir}/cli_art"
+fi
+
+run_vm() {
+    local cmd="$1"
+    local needs_sync="${2:-0}"
+    $cmd
+
+    # Sync data after VM exits (only for physical disks)
+    if [ "$needs_sync" = "1" ]; then
+        sync && sync && sync
+        sleep 1
+    fi
+}
+
+run_headless() {
+    local cmd="$1"
+    preop "Starting headless VM (serial on stdio)..."
+    clear
+    $cmd
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        postop "VM exited cleanly"
+    else
+        warn "VM exited with code: $exit_code"
+    fi
+}
+
+copy_disk() {
+    local image="$1"
+    local temp_name
+    temp_name="$(dirname "$image")/${short_uuid}$(basename "$image")"
+
+    preop "Copying $image > $temp_name..." >&2
+
+    if ! file_ex "$image"; then
+        postop "Error: $image not found" >&2
+        return 1
+    fi
+
+    if ! cp "$image" "$temp_name"; then
+        postop "Error: Failed to copy $image" >&2
+        return 1
+    fi
+
+    printf "\nCopied to %s\n" "$temp_name" >&2
+    echo "$temp_name"
+    return 0
+}
+
+generate_mac() {
+    local mac
+    mac="52:54:00:$(printf '%02x:%02x:%02x' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))"
+    preop "Generated MAC: $mac"
+    echo "$mac"
+}
+
+qemu_cmd() {
+    local image="$1"
+    shift
+    # Base command
+    local cmd="qemu-system-${arch} -enable-kvm -m ${ram} -cpu host -smp ${cores}"
+
+    # Add UEFI firmware if enabled
+    if [ "$use_uefi" = "1" ]; then
+        cmd="$cmd -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd"
+    fi
+
+    local use_display=1
+    local use_std_vga=0
+    # Check for display/vga options
+    for arg in "$@"; do
+        if [ "$arg" = "--headless" ]; then
+            use_display=0
+        elif [ "$arg" = "--vga-std" ]; then
+            use_std_vga=1
+        fi
+    done
+
+    # Configure display
+    if [ $use_display -eq 1 ]; then
+        if [ $use_std_vga -eq 1 ]; then
+            # Standard VGA for GRUB testing
+            cmd="$cmd -vga std"
+        else
+            # VirtIO GPU (default)
+            cmd="$cmd -vga none"
+            if [ "$gl" = "on" ]; then
+                cmd="$cmd -device virtio-gpu-pci -display ${display},gl=on"
+            else
+                cmd="$cmd -device virtio-gpu-pci -display ${display}"
+            fi
+        fi
+    else
+        # Headless: serial output to terminal, no graphical display
+        cmd="$cmd -serial mon:stdio -display none"
+    fi
+
+    if [ "$audio_backend" != "none" ]; then
+        case "$audio_device" in
+            intel-hda)
+                cmd="$cmd -audiodev ${audio_backend},id=snd0 -device intel-hda -device hda-duplex,audiodev=snd0"
+                ;;
+            AC97)
+                cmd="$cmd -audiodev ${audio_backend},id=snd0 -device AC97,audiodev=snd0"
+                ;;
+            usb-audio)
+                cmd="$cmd -audiodev ${audio_backend},id=snd0 -device usb-audio,audiodev=snd0"
+                ;;
+        esac
+    fi
+
+    # Add clipboard sharing if enabled
+    if [ "$use_clipboard" = "1" ]; then
+        cmd="$cmd -chardev qemu-vdagent,id=ch1,name=vdagent,clipboard=on"
+        cmd="$cmd -device virtio-serial-pci"
+        cmd="$cmd -device virtserialport,chardev=ch1,id=ch1,name=com.redhat.spice.0"
+    fi
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --hda)
+                cmd="$cmd -hda $2"
+                shift 2
+                ;;
+            --cdrom)
+                cmd="$cmd -cdrom $2"
+                shift 2
+                ;;
+            --boot)
+                cmd="$cmd -boot $2"
+                shift 2
+                ;;
+            --serial)
+                cmd="$cmd -serial $2"
+                shift 2
+                ;;
+            --display)
+                cmd="$cmd -display $2"
+                shift 2
+                ;;
+            --usb-drive)
+                cmd="$cmd -drive file=$2,format=raw,if=virtio,cache=none,aio=native"
+                # probably needs sync after exit... 
+                # TODO create read-only option or snapshot=on for readonly
+                shift 2
+                ;;
+            --network)
+                cmd="$cmd -netdev user,id=mynet0 -device e1000,netdev=mynet0,mac=$2"
+                shift 2
+                ;;
+            --headless)
+                # Already handled above
+                shift
+                ;;
+            --vga-std)
+                # Already handled above
+                shift
+                ;;
+            --vnc)
+                # Use VNC instead of auto-detected display
+                cmd=$(echo "$cmd" | sed 's/-display [^ ]*/-vnc :0/')
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    echo "$cmd"
+}
+
+show_menu() {
+    echo "########################################"
+    echo "Zazu_lago VM Tooling: rdisk, brick, then dupk."
+    echo "Display: ${qemu_display} | GL: ${qemu_gl}"
+    echo "########################################"
+    echo " rdisk   : Reset ${vm_name} ${size}"
+    echo " dupk    : Permanent copy"
+    echo " duck    : Temporary copy"
+    echo " mayk    : Maybe Y/N copy"
+    echo " brick   : Boot ISO ${iso_n}"
+    echo " vncd    : Boot w VNC only"
+    echo " vnck    : Run w VNC only"
+    echo " std     : Run (standard VGA)"
+    echo " cupkd   : Boot w ${target}"
+    echo " cupk    : Run w ${target}"
+    echo " conkd   : Boot w ${target} and disk"
+    echo " conk    : Run w ${target} and disk"
+    echo " taild   : Headless w logs"
+    echo " bootk   : Boot headless w/ logs"
+    echo " macg    : Generate MAC + run"
+    echo " exit    : Exit"
+    echo "########################################"
+}
+
+main() {
+    local quick_cmd="${1:-}"  # Get quick command from argument
+
+    # Create disk if it doesn't exist
+    if ! file_ex "$image_name"; then
+        preop "Creating initial disk: $image_name"
+        qemu-img create -f qcow2 "$image_name" "$size"
+    fi
+
+    # Check for quick command from argument (bypass menu)
+    if [ -n "$quick_cmd" ]; then
+        if [ "$quick_cmd" = "__default__" ]; then
+            choice=""  # Empty = default action
+            preop "Quick mode: running default VM"
+        else
+            choice="$quick_cmd"
+            preop "Quick command: $choice"
+        fi
+    else
+        # Show menu
+        show_menu
+        printf "Choice (any key for default): "
+        read -r choice
+    fi
+    choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+
+    # Handle choices
+    case "$choice" in
+        help|--help|-h)
+            show_menu
+            return 0
+            ;;
+
+        rdisk)
+            qemu-img create -f qcow2 "$image_name" "$size"
+            postop "Reset disk $image_name"
+            return 0
+            ;;
+
+        exit)
+            postop "Exiting."
+            return 0
+            ;;
+
+        brick)
+            preop "Booting from ISO ..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --cdrom "$iso_name" --boot d)
+            run_vm "$cmd"
+            return 0
+            ;;
+        vncd)
+            preop "Booting from ISO (VNC)..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --cdrom "$iso_name" --boot d --vnc)
+            run_vm "$cmd"
+            ;;
+
+        vnck)
+            preop "Running VM (VNC)..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c --vnc)
+            run_vm "$cmd"
+            ;;
+
+        std)
+            preop "Running VM (standard VGA)..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c --vga-std)
+            run_vm "$cmd"
+            ;;
+
+        bootk)
+            preop "Headless boot..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --cdrom "$iso_name" --boot d --headless)
+            run_headless "$cmd"
+            ;;
+
+        taild)
+            preop "Headless run..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c --headless)
+            run_headless "$cmd"
+            ;;
+
+        duck)
+            temp_name=$(copy_disk "$image_name")
+            if [ $? -ne 0 ]; then
+                postop "Failed to copy disk"
+                return 1
+            fi
+            cmd=$(qemu_cmd "$temp_name" --hda "$temp_name" --boot c)
+            run_vm "$cmd"
+            rm -f "$temp_name"
+            preop "Temp disk removed"
+            ;;
+
+        dupk)
+            temp_name=$(copy_disk "$image_name")
+            if [ $? -ne 0 ]; then
+                postop "Failed to copy disk"
+                return 1
+            fi
+            cmd=$(qemu_cmd "$temp_name" --hda "$temp_name" --boot c)
+            run_vm "$cmd"
+            preop "Permanent copy: $temp_name"
+            ;;
+
+        mayk)
+            temp_name=$(copy_disk "$image_name")
+            if [ $? -ne 0 ]; then
+                postop "Failed to copy disk"
+                return 1
+            fi
+            cmd=$(qemu_cmd "$temp_name" --hda "$temp_name" --boot c)
+            run_vm "$cmd"
+            printf "Save? (Y/n): "
+            read -r save_choice
+            save_choice=$(echo "$save_choice" | tr '[:upper:]' '[:lower:]')
+            case "$save_choice" in
+                n|no)
+                    rm -f "$temp_name"
+                    preop "Temp disk removed"
+                    ;;
+                *)
+                    preop "Permanent copy: $temp_name"
+                    ;;
+            esac
+            ;;
+
+        macg)
+            mac=$(generate_mac)
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c --network "$mac")
+            run_vm "$cmd"
+            ;;
+
+        cupk)
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c --usb-drive "$target")
+            run_vm "$cmd" 1
+            ;;
+
+        cupkd)
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --cdrom "$iso_name" --boot d --usb-drive "$target")
+            run_vm "$cmd" 1
+            ;;
+
+        conk)
+            cmd=$(qemu_cmd "" --boot c --usb-drive "$target")
+            run_vm "$cmd" 1
+            return 0
+            ;;
+
+        conkd)
+            cmd=$(qemu_cmd "" --cdrom "$iso_name" --boot d --usb-drive "$target")
+            run_vm "$cmd" 1
+            return 0
+            ;;
+
+        *)
+            # Default run
+            preop "Running VM..."
+            cmd=$(qemu_cmd "$image_name" --hda "$image_name" --boot c)
+            run_vm "$cmd"
+            ;;
+    esac
+
+    postop "Done...."
+}
+
+# Run main with all arguments
+main "$@"

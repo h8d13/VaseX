@@ -1,0 +1,99 @@
+#... strucs
+# This file is an absolute mess but everything is declared here
+EDITOR="${EDITOR:-vim}"
+
+################## ISO CREATION
+vase_v="0.0.16" # For motd / github page
+silent_mode=1 #Supress output of mkarchiso
+auto_date=1 # 1=automatic date, 0=manual
+iso_profile="plasma_skinny"
+
+################## VM STUFF
+arch="x86_64"
+ram="8096"
+# 16384 4048 2024 1012
+cores="6"
+# vCPUS so actually threads but named it cores
+size="60G" 
+# Preallocation doesnt take space directly
+
+vm_d="a"
+# "a" for testing build ISOs "d" for regular
+
+[ "$auto_date" = "1" ] && iso_n="VASE-$(date +%Y.%m.%d)-x86_64" ||\
+iso_n="VASE-2025.10.24-x86_64"
+# Or manual ^^
+ 
+iso_ext="iso" #raw, bin
+
+vm_name="myvm0" 
+#vm_name="myvm1" #gnome-testing
+#vm_name="myvm2" #alpine
+#vm_name="myvm3" #arch
+#dupkvm will look something like this 9c901bmyvm1
+
+vm_ext="qcow2" #raw, bin
+
+## For running with attached storage
+target_p="sda"
+target_t="/dev/"
+target="${target_t}${target_p}"
+## This can also be a mounted fs
+# Mount it first. 
+# Check lsblk output to find which partition it is. 
+# Ex sdd3 8:51   0 880.5G  0 part /run/media/usr/UUID
+
+## QEMU Display Settings
+qemu_display="sdl"
+# Display backend: sdl, gtk, vnc
+qemu_gl="on"
+# GL acceleration: on, off (for gtk)
+qemu_uefi=1
+# Copy EFI vars to QEMU: 1 or 0
+qemu_clipboard=0
+# Clipboard sharing: 1 or 0
+audio_backend="pipewire"  # pa, alsa, pipewire, or none
+audio_device="intel-hda"  # intel-hda, AC97, usb-audio
+
+################## DIRS/LOGS/PERMS
+iso_sig="asc"
+s_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+rel="$s_dir/"
+# Dir mods
+hide_d="."
+ext_d=".d"
+hide_d_mod=1  # 1=hidden, 0=visible
+ext_d_mod=1 # 1=hidden, 0=visible
+# Build custom_n with conditional prefix and suffix
+custom_n="vase"
+[ "$hide_d_mod" = "1" ] && custom_n="${hide_d}${custom_n}"
+[ "$ext_d_mod" = "1" ] && custom_n="${custom_n}${ext_d}"
+
+#### Names
+p_lib="$custom_n"
+c_file="logs"
+c_ext="conf"
+rcw_file="rcw"
+log_n="vase"
+log_ext="log"
+cli_a="cli_art"
+
+#### More paths
+vase_d="vase_os"
+hb_d="$vase_d/hade_box"
+zl_d="$vase_d/zazu_lago"
+gl_d="$vase_d/grome_lum"
+ch_d="$vase_d/chap_pie"
+ka_d="$vase_d/kaes_arch"
+pp_d="$vase_d/pacto_pac"
+
+vase_p_env="$vase_d/env"
+vase_p_deps="$vase_d/mindeps"
+cc_py="$vase_d/clean_cache"
+
+#### Future alpine imp
+# Privilege escalation (ex: doas alternative)
+elev_cmd="sudo"
+
+## For runtime output
+script_s=$(date +%s%6N)

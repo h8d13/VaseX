@@ -1,0 +1,593 @@
+#!/bin/bash
+# Klartix - Artix Linux Bootstrap Installer
+# Script for my good friend Klagan who values no being on Systemd & Minimalism approach
+# Assumes x86_64, GPT/UEFI, and can run from any Linux distro
+# Doesnot need an ISO bootstrap direclty from official tool
+# Has many clean up steps to not pollute host device
+# Source utilities and colors
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${SCRIPT_DIR}/../../util_f"
+if file_ex "${SCRIPT_DIR}/../../.vase.d/rcw"; then
+    . "${SCRIPT_DIR}/../../.vase.d/rcw"
+fi
+# Source cfg file
+
+. "${SCRIPT_DIR}/klartix.conf"
+# Simplified installation with LVM on LUKS
+TOTAL_STEPS=28
+CURRENT_STEP=0
+# Progress bar function
+show_progress() {
+    local step_desc="$1"
+    CURRENT_STEP=$((CURRENT_STEP + 1))
+    # Calculate percentage
+    local percent=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+    # Bar width (50 characters)
+    local bar_width=50
+    local filled=$((CURRENT_STEP * bar_width / TOTAL_STEPS))
+    local empty=$((bar_width - filled))
+    # Build the bar
+    local bar=""
+    local i
+    for i in $(seq 1 $filled); do
+        bar="${bar}█"
+    done
+    for i in $(seq 1 $empty); do
+        bar="${bar}░"
+    done
+    # Clear line and print progress bar
+    printf "\r\033[K"
+    printf "${CYAN}[%s]${NC} %3d%% (%d/%d)\n" "$bar" "$percent" "$CURRENT_STEP" "$TOTAL_STEPS"
+    # Print step description below
+    info "$step_desc"
+}
+set -e  # Exit on error
+# Parse arguments
+VERBOSE=0
+for arg in "$@"; do
+    case $arg in
+        -v|--verbose)
+            VERBOSE=1
+            shift
+            ;;
+        *)
+            ;;
+    esac
+done
+# Vars
+TARGET_DISK="" # Will be prompted
+TARGET_USER="" # Will be prompted
+USER_PASSWORD="" # Will be prompted
+ROOT_PASSWORD="" # Will be prompted
+LUKS_PASSWORD="" # Will be prompted if ENABLE_LUKS=1
+
+# Prerequisites for LVM on LUKS installation
+PKGS="wget parted lvm2 cryptsetup"
+case "$TARGET_FS" in
+    btrfs)
+        PKGS="$PKGS btrfs-progs"
+        ;;
+    xfs)
+        PKGS="$PKGS xfsprogs"
+        ;;
+    f2fs)
+        PKGS="$PKGS f2fs-tools"
+        ;;
+esac
+obanner "Klartix - Artix Linux Bootstrap Installer"
+nlp
+# Show available disks first
+info "Current block devices:"
+lsblk
+nlp
+# Prompt for target disk
+read -p "Enter target disk: " TARGET_DISK
+if [ -z "$TARGET_DISK" ]; then
+    die "Target disk cannot be empty."
+fi
+if [ ! -b "$TARGET_DISK" ]; then
+    die "Device $TARGET_DISK does not exist or is not a block device."
+fi
+nlp
+info "Installation layout:"
+echo "  Init system:  $INIT_SYSTEM"
+echo "  Kernel:       $KERNEL"
+echo "  Filesystem:   $TARGET_FS"
+echo "  Target disk:  $TARGET_DISK"
+echo "  EFI size:     $EFI_SIZE"
+echo "  Boot:         /boot on root LV"
+if [ "$SEPARATE_HOME" = "1" ]; then
+    echo "  Home:         Separate /home LV"
+else
+    echo "  Home:         /home on root LV"
+fi
+echo "  Swap:         zram"
+echo "  Encryption:   LVM on LUKS2 with pbkdf2"
+nlp
+warn "WARNING: This will ERASE ALL DATA on $TARGET_DISK!"
+nlp
+read -p "Continue with this disk? [y/N]: " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    warn "Installation cancelled."
+    exit 0
+fi
+nlp
+cbanner "Klartix - Artix Linux Bootstrap Installer"
+nlp
+# Now prompt for passwords and user after disk confirmation
+read -sp "Enter password for root: " ROOT_PASSWORD
+echo ""
+read -sp "Confirm root password: " ROOT_PASSWORD_CONFIRM
+echo ""
+if [ "$ROOT_PASSWORD" != "$ROOT_PASSWORD_CONFIRM" ]; then
+    die "Root passwords do not match."
+fi
+if [ -z "$ROOT_PASSWORD" ]; then
+    die "Root password cannot be empty."
+fi
+# Prompt for username and password
+read -p "Enter a username: " TARGET_USER
+if [ -z "$TARGET_USER" ]; then
+    die "Username cannot be empty."
+fi
+read -sp "Enter password for $TARGET_USER: " USER_PASSWORD
+echo ""
+read -sp "Confirm user password: " USER_PASSWORD_CONFIRM
+echo ""
+if [ "$USER_PASSWORD" != "$USER_PASSWORD_CONFIRM" ]; then
+    die "User passwords do not match."
+fi
+if [ -z "$USER_PASSWORD" ]; then
+    die "User password cannot be empty."
+fi
+# Prompt for LUKS password
+nlp
+warn "IMPORTANT: GRUB uses US keyboard layout at boot!"
+warn "Your password will be typed with US layout even if you use '$KB_LAYOUT' now."
+warn "Avoid special characters that differ between layouts (e.g., shifted symbols)."
+nlp
+info "LUKS encryption password options:"
+echo "  1) Reuse root password"
+echo "  2) Reuse user password"
+echo "  3) Use a different password"
+nlp
+read -p "Choose password option [1-3]: " luks_choice
+case "$luks_choice" in
+    1)
+        LUKS_PASSWORD="$ROOT_PASSWORD"
+        info "Using root password for LUKS encryption"
+        ;;
+    2)
+        LUKS_PASSWORD="$USER_PASSWORD"
+        info "Using user password for LUKS encryption"
+        ;;
+    3)
+        nlp
+        warn "Test your password: after entering, type it again to verify characters match."
+        nlp
+        read -sp "Enter LUKS encryption password: " LUKS_PASSWORD
+        echo ""
+        read -sp "Confirm LUKS encryption password: " LUKS_PASSWORD_CONFIRM
+        echo ""
+        if [ "$LUKS_PASSWORD" != "$LUKS_PASSWORD_CONFIRM" ]; then
+            die "LUKS passwords do not match."
+        fi
+        if [ -z "$LUKS_PASSWORD" ]; then
+            die "LUKS password cannot be empty."
+        fi
+        # Show password length to help verify
+        info "Password length: ${#LUKS_PASSWORD} characters"
+        ;;
+    *)
+        die "Invalid choice. Please select 1, 2, or 3."
+        ;;
+esac
+nlp
+info "Final configuration:"
+echo "  Hostname:     $TARGET_HOSTNAME"
+echo "  User:         $TARGET_USER"
+echo "  Timezone:     $TARGET_TIMEZONE"
+nlp
+cbanner "Klartix - Artix Linux Bootstrap Installer"
+read -p "Begin installation? [y/N]: " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    warn "Installation cancelled."
+    exit 0
+fi
+nlp
+# Here we'd set up trap 
+# Install required packages
+show_progress "Installing required packages on host..."
+# Verify variables are set
+if [ -z "$PKG_MAN" ] || [ -z "$PKG_MAN_W" ] || [ -z "$ARG1" ]; then
+    die "Package manager variables not set. Config file may not have been sourced correctly."
+fi
+"$PKG_MAN" $PKG_MAN_W $PKGS $ARG1
+# Clean up previous files if canceled/failed install
+show_progress "Cleaning up previous installation attempts..."
+rm -rf /tmp/artix-bootstrap*
+# Ensure target mount point exists
+TARGET_MOUNT="/mnt/artix"
+mkdir -p "$TARGET_MOUNT"
+# Partitioning - Simple 2-partition layout for LVM on LUKS
+show_progress "Partitioning $TARGET_DISK..."
+PARTED_OUTPUT=$(mktemp)
+# Two partitions: EFI + LUKS container for LVM
+parted -s -a cylinder "$TARGET_DISK" -- mklabel gpt \
+    mkpart primary fat32 1MiB "$EFI_SIZE" \
+    set 1 esp on \
+    mkpart primary ext4 "$EFI_SIZE" 100% 2>&1 | tee "$PARTED_OUTPUT"
+# Check if kernel couldn't be informed about partition changes
+if grep -q "unable to inform the kernel" "$PARTED_OUTPUT"; then
+    rm -f "$PARTED_OUTPUT"
+    warn "Partitions are in use by the kernel!"
+    warn "This usually happens after a failed installation attempt."
+    echo ""
+    info "Please do ONE of the following:"
+    echo "  1. Unplug and replug the USB/disk"
+    echo "  2. Reboot the system"
+    echo "  3. Run: sudo partprobe $TARGET_DISK && sudo blockdev --rereadpt $TARGET_DISK"
+    echo ""
+    die "Cannot continue with stale partition table. Fix the issue above and try again."
+fi
+rm -f "$PARTED_OUTPUT"
+# Force kernel to re-read partition table
+show_progress "Updating kernel partition table..."
+partprobe "${TARGET_DISK}"
+sleep 2
+# Determine partition naming scheme (nvme uses p1, others use 1)
+if [[ "$TARGET_DISK" == *"nvme"* ]] || [[ "$TARGET_DISK" == *"mmcblk"* ]]; then
+    PART_PREFIX="p"
+else
+    PART_PREFIX=""
+fi
+# Setup LVM on LUKS
+show_progress "Setting up LUKS2 with pbkdf2..."
+# Close any existing mappings from previous attempts
+vgchange -an lvmSystem 2>/dev/null || true
+cryptsetup close lvm-system 2>/dev/null || true
+dmsetup remove_all --force 2>/dev/null || true
+sleep 2
+
+# Wipe any existing signatures
+wipefs -af "${TARGET_DISK}${PART_PREFIX}2" 2>/dev/null || true
+partprobe "${TARGET_DISK}" 2>/dev/null || true
+sleep 1
+
+# Create LUKS2 container with pbkdf2 (more compatible)
+show_progress "Creating LUKS2 container with pbkdf2..."
+PASS_LEN=${#LUKS_PASSWORD}
+if [ "$VERBOSE" = "1" ]; then
+    printf "%s" "$LUKS_PASSWORD" | cryptsetup luksFormat --batch-mode --type luks2 --pbkdf pbkdf2 --iter-time 1000 --sector-size 512 --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" || die "Failed to create LUKS container"
+    printf "%s" "$LUKS_PASSWORD" | cryptsetup open --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" lvm-system || die "Failed to open LUKS container"
+else
+    printf "%s" "$LUKS_PASSWORD" | cryptsetup luksFormat --batch-mode --type luks2 --pbkdf pbkdf2 --iter-time 1000 --sector-size 512 --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" > /dev/null 2>&1 || die "Failed to create LUKS container"
+    printf "%s" "$LUKS_PASSWORD" | cryptsetup open --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" lvm-system > /dev/null 2>&1 || die "Failed to open LUKS container"
+fi
+
+# Setup LVM inside LUKS container
+show_progress "Setting up LVM volumes..."
+pvcreate /dev/mapper/lvm-system || die "Failed to create physical volume"
+vgcreate lvmSystem /dev/mapper/lvm-system || die "Failed to create volume group"
+
+# Create logical volumes
+lvcreate -L 20G lvmSystem -n volRoot || die "Failed to create root volume"
+if [ "$SEPARATE_HOME" = "1" ]; then
+    lvcreate -l +100%FREE lvmSystem -n volHome || die "Failed to create home volume"
+fi
+
+# Verify LUKS password by reopening
+show_progress "Verifying LUKS password..."
+vgchange -an lvmSystem || true
+sleep 1
+cryptsetup close lvm-system || true
+sleep 1
+printf "%s" "$LUKS_PASSWORD" | cryptsetup open --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" lvm-system || die "LUKS password verification failed"
+vgchange -ay lvmSystem || die "Failed to activate volume group"
+reop "LVM on LUKS setup completed successfully!"
+# Format filesystems
+show_progress "Formatting filesystems..."
+if [ "$VERBOSE" = "1" ]; then
+    # Format EFI partition
+    mkfs.fat -F32 "${TARGET_DISK}${PART_PREFIX}1"
+    # Format root LV
+    case "$TARGET_FS" in
+        ext4) mkfs.ext4 -F /dev/lvmSystem/volRoot ;;
+        btrfs) mkfs.btrfs -f /dev/lvmSystem/volRoot ;;
+        xfs) mkfs.xfs -f /dev/lvmSystem/volRoot ;;
+        f2fs) mkfs.f2fs -f /dev/lvmSystem/volRoot ;;
+    esac
+    # Format home LV if separate
+    if [ "$SEPARATE_HOME" = "1" ]; then
+        case "$TARGET_FS" in
+            ext4) mkfs.ext4 -F /dev/lvmSystem/volHome ;;
+            btrfs) mkfs.btrfs -f /dev/lvmSystem/volHome ;;
+            xfs) mkfs.xfs -f /dev/lvmSystem/volHome ;;
+            f2fs) mkfs.f2fs -f /dev/lvmSystem/volHome ;;
+        esac
+    fi
+else
+    # Quiet formatting
+    mkfs.fat -F32 "${TARGET_DISK}${PART_PREFIX}1" > /dev/null 2>&1
+    case "$TARGET_FS" in
+        ext4) mkfs.ext4 -F -q /dev/lvmSystem/volRoot ;;
+        btrfs) mkfs.btrfs -f /dev/lvmSystem/volRoot > /dev/null 2>&1 ;;
+        xfs) mkfs.xfs -f /dev/lvmSystem/volRoot > /dev/null 2>&1 ;;
+        f2fs) mkfs.f2fs -f /dev/lvmSystem/volRoot > /dev/null 2>&1 ;;
+    esac
+    if [ "$SEPARATE_HOME" = "1" ]; then
+        case "$TARGET_FS" in
+            ext4) mkfs.ext4 -F -q /dev/lvmSystem/volHome ;;
+            btrfs) mkfs.btrfs -f /dev/lvmSystem/volHome > /dev/null 2>&1 ;;
+            xfs) mkfs.xfs -f /dev/lvmSystem/volHome > /dev/null 2>&1 ;;
+            f2fs) mkfs.f2fs -f /dev/lvmSystem/volHome > /dev/null 2>&1 ;;
+        esac
+    fi
+fi
+# Mount filesystems
+show_progress "Mounting filesystems..."
+# Mount root LV
+mount /dev/lvmSystem/volRoot "$TARGET_MOUNT"
+# Mount home LV if separate
+if [ "$SEPARATE_HOME" = "1" ]; then
+    mkdir -p "$TARGET_MOUNT/home"
+    mount /dev/lvmSystem/volHome "$TARGET_MOUNT/home"
+fi
+# Mount EFI at /efi (modern standard)
+mkdir -p "$TARGET_MOUNT/efi"
+mount "${TARGET_DISK}${PART_PREFIX}1" "$TARGET_MOUNT/efi"
+# Download and extract Artix bootstrap using official artix-bootstrap tool
+show_progress "Downloading Artix bootstrap tool..."
+cd /tmp
+if [ "$VERBOSE" = "1" ]; then
+    wget https://gitea.artixlinux.org/artix/artix-bootstrap/raw/branch/master/artix-bootstrap.sh
+else
+    wget -q https://gitea.artixlinux.org/artix/artix-bootstrap/raw/branch/master/artix-bootstrap.sh
+fi
+show_progress "Setting bootstrap tool permissions..."
+chmod +x artix-bootstrap.sh
+show_progress "Bootstrapping Artix Linux with $INIT_SYSTEM..."
+if [ "$VERBOSE" = "1" ]; then
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT"
+else
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT" > /dev/null 2>&1
+fi
+# At this point, artix-bootstrap should have set up the base system
+# Configure chroot mounts
+show_progress "Configuring chroot environment..."
+mount -t proc /proc "$TARGET_MOUNT/proc"
+mount -t sysfs /sys "$TARGET_MOUNT/sys"
+mount -o bind /dev "$TARGET_MOUNT/dev"
+mount -o bind /dev/pts "$TARGET_MOUNT/dev/pts"
+# Mount efivarfs since we assume UEFI systems
+show_progress "Copying host UEFI vars..."
+if [ -d /sys/firmware/efi/efivars ]; then
+    mount -t efivarfs efivarfs "$TARGET_MOUNT/sys/firmware/efi/efivars" 2>/dev/null || true
+fi
+show_progress "Copying host resolv.conf..."
+cp /etc/resolv.conf "$TARGET_MOUNT/etc/"
+# Generate fstab for LVM on LUKS
+show_progress "Generating fstab..."
+if command -v fstabgen >/dev/null 2>&1; then
+    fstabgen -U "$TARGET_MOUNT" > "$TARGET_MOUNT/etc/fstab"
+else
+    # Fallback: manual fstab generation for LVM volumes
+    echo "# Generated fstab for LVM on LUKS" > "$TARGET_MOUNT/etc/fstab"
+    echo "/dev/lvmSystem/volRoot / $TARGET_FS defaults 0 1" >> "$TARGET_MOUNT/etc/fstab"
+    if [ "$SEPARATE_HOME" = "1" ]; then
+        echo "/dev/lvmSystem/volHome /home $TARGET_FS defaults 0 2" >> "$TARGET_MOUNT/etc/fstab"
+    fi
+    echo "UUID=$(blkid -s UUID -o value ${TARGET_DISK}${PART_PREFIX}1) /efi vfat defaults 0 2" >> "$TARGET_MOUNT/etc/fstab"
+    # No swap partition - zram will be configured
+fi
+# Create configuration script for chroot
+show_progress "Creating chroot configuration script..."
+# Get LUKS partition UUID for LVM on LUKS
+LUKS_UUID=$(blkid -s UUID -o value "${TARGET_DISK}${PART_PREFIX}2")
+
+cat > "$TARGET_MOUNT/configure.sh" << EOF
+#!/bin/bash
+# Klartix LVM on LUKS system configuration
+set -e
+# Initialize pacman keyring first
+echo "Initializing pacman keyring..."
+pacman-key --init
+pacman-key --populate artix
+# Update package databases
+echo "Updating package databases..."
+pacman -Sy
+# Basic configuration
+ln -sf /usr/share/zoneinfo/$TARGET_TIMEZONE /etc/localtime
+hwclock --systohc
+# Locale
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+# Console keymap
+echo "KEYMAP=$KB_LAYOUT" > /etc/vconsole.conf
+# Hostname
+echo "$TARGET_HOSTNAME" > /etc/hostname
+echo "127.0.0.1 localhost" > /etc/hosts
+echo "::1 localhost" >> /etc/hosts
+echo "127.0.1.1 $TARGET_HOSTNAME.localdomain $TARGET_HOSTNAME" >> /etc/hosts
+# DNS
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+# Set root password
+echo "root:$ROOT_PASSWORD" | chpasswd
+
+# Install essential packages for LVM on LUKS
+echo "Installing kernel, LVM, and base packages..."
+pacman -S --noconfirm $KERNEL linux-firmware grub efibootmgr base-devel sudo lvm2 cryptsetup git vim
+
+# Create user
+useradd -m -s /bin/bash -G wheel $TARGET_USER
+echo "$TARGET_USER:$USER_PASSWORD" | chpasswd
+# Enable sudo for wheel group
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# Install init-specific packages for NetworkManager, LVM and cryptsetup
+case "$INIT_SYSTEM" in
+    openrc)
+        pacman -S --noconfirm networkmanager-openrc device-mapper-openrc lvm2-openrc cryptsetup-openrc
+        rc-update add NetworkManager default
+        rc-update add device-mapper default
+        rc-update add lvm default
+        rc-update add dmcrypt default
+        ;;
+    runit)
+        pacman -S --noconfirm networkmanager-runit device-mapper-runit lvm2-runit cryptsetup-runit
+        ln -s /etc/runit/sv/NetworkManager /etc/runit/runsvdir/default/
+        ln -s /etc/runit/sv/lvm /etc/runit/runsvdir/default/
+        ;;
+    s6)
+        pacman -S --noconfirm networkmanager-s6 device-mapper-s6 lvm2-s6 cryptsetup-s6
+        s6-rc-bundle-update add default NetworkManager
+        s6-rc-bundle-update add default lvm
+        ;;
+    dinit)
+        pacman -S --noconfirm networkmanager-dinit device-mapper-dinit lvm2-dinit cryptsetup-dinit
+        dinitctl enable NetworkManager
+        dinitctl enable lvm
+        ;;
+esac
+
+# Configure LVM on LUKS
+echo "Configuring LVM on LUKS..."
+# Note: crypttab not needed since GRUB unlocks LUKS before boot
+# The init system will use the already-unlocked device
+
+# Generate embedded keyfile for GRUB→initramfs handoff (avoids 2nd password prompt)
+echo "Generating cryptkey for single password prompt..."
+dd bs=512 count=4 if=/dev/random of=/crypto_keyfile.bin iflag=fullblock 2>/dev/null
+chmod 000 /crypto_keyfile.bin
+
+# Add keyfile to LUKS (allows unlocking with either password OR keyfile)
+echo "Adding keyfile to LUKS container..."
+printf "%s" "$ROOT_PASSWORD" | cryptsetup luksAddKey "${TARGET_DISK}${PART_PREFIX}2" /crypto_keyfile.bin --key-file=- --keyfile-size=${#ROOT_PASSWORD}
+
+# Configure GRUB for LVM on LUKS with pbkdf2 and cryptkey
+sed -i "s|^GRUB_CMDLINE_LINUX=.*|GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$LUKS_UUID:lvm-system root=/dev/lvmSystem/volRoot cryptkey=rootfs:/crypto_keyfile.bin zswap.enabled=0\"|" /etc/default/grub
+
+# Add encrypt and lvm2 hooks to mkinitcpio
+sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block encrypt keyboard keymap consolefont lvm2 filesystems fsck)/' /etc/mkinitcpio.conf
+
+# Embed keyfile into initramfs for automatic unlocking
+sed -i 's/^FILES=.*/FILES=(\/crypto_keyfile.bin)/' /etc/mkinitcpio.conf
+
+# Enable GRUB cryptodisk support for pbkdf2 LUKS2
+echo "GRUB_ENABLE_CRYPTODISK=y" >> /etc/default/grub
+echo "GRUB_TERMINAL_INPUT=console" >> /etc/default/grub
+echo "GRUB_TERMINAL_OUTPUT=console" >> /etc/default/grub
+
+# Setup zram for swap (Artix Linux)
+echo "Configuring zram swap for Artix..."
+
+# Create udev rule for zram
+mkdir -p /etc/udev/rules.d
+cat > /etc/udev/rules.d/99-zram.rules << ZRAM_EOF
+ACTION=="add", KERNEL=="zram0", ATTR{comp_algorithm}="zstd", ATTR{disksize}="4G", RUN="/usr/bin/mkswap -U clear /dev/%k"
+ZRAM_EOF
+
+# Add zram to fstab
+echo '/dev/zram0 none swap defaults,pri=100 0 0' >> /etc/fstab
+
+# Load zram module at boot
+mkdir -p /etc/modules-load.d
+echo 'zram' > /etc/modules-load.d/zram.conf
+
+# VM optimization for zram
+mkdir -p /etc/sysctl.d
+cat > /etc/sysctl.d/99-vm-zram-parameters.conf << ZRAM_EOF
+vm.swappiness = 100
+vm.watermark_boost_factor = 0
+vm.watermark_scale_factor = 125
+ZRAM_EOF
+
+# Regenerate initramfs with LVM and encryption support
+echo "Regenerating initramfs with LVM on LUKS support..."
+mkinitcpio -P
+
+# Install and configure GRUB for /efi
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Artix
+grub-install --target=x86_64-efi --efi-directory=/efi --removable
+grub-mkconfig -o /boot/grub/grub.cfg
+EOF
+show_progress "Making configuration script executable..."
+chmod +x "$TARGET_MOUNT/configure.sh"
+# Execute configuration in chroot
+show_progress "Executing system configuration in chroot..."
+chroot "$TARGET_MOUNT" /bin/bash /configure.sh
+show_progress "Cleaning up configuration script..."
+rm "$TARGET_MOUNT/configure.sh"
+# Cleanup
+show_progress "Syncing data to disk..."
+sync
+sleep 2
+show_progress "Unmounting filesystems..."
+# Kill any processes that might be accessing the mount
+fuser -km "$TARGET_MOUNT" 2>/dev/null || true
+sleep 1
+
+# Unmount in reverse order (use regular umount, not lazy)
+umount "$TARGET_MOUNT/dev/pts" 2>/dev/null || umount -l "$TARGET_MOUNT/dev/pts" 2>/dev/null || true
+umount "$TARGET_MOUNT/dev" 2>/dev/null || umount -l "$TARGET_MOUNT/dev" 2>/dev/null || true
+umount "$TARGET_MOUNT/proc" 2>/dev/null || umount -l "$TARGET_MOUNT/proc" 2>/dev/null || true
+umount "$TARGET_MOUNT/sys" 2>/dev/null || umount -l "$TARGET_MOUNT/sys" 2>/dev/null || true
+umount "$TARGET_MOUNT/efi" 2>/dev/null || umount -l "$TARGET_MOUNT/efi" 2>/dev/null || true
+if [ "$SEPARATE_HOME" = "1" ]; then
+    umount "$TARGET_MOUNT/home" 2>/dev/null || umount -l "$TARGET_MOUNT/home" 2>/dev/null || true
+fi
+umount "$TARGET_MOUNT" 2>/dev/null || umount -l "$TARGET_MOUNT" 2>/dev/null || true
+
+# Wait for unmounts to settle
+sleep 2
+
+# Close LVM and LUKS devices (CRITICAL - must wait for clean close)
+show_progress "Closing LVM and LUKS devices..."
+# Sync again before closing
+sync && sync && sync
+sleep 2
+
+# Deactivate LVM volume group first
+if ! vgchange -an lvmSystem 2>/dev/null; then
+    warn "Forcing LVM deactivation..."
+    dmsetup remove_all --force 2>/dev/null || true
+fi
+
+# Close LUKS container
+if ! cryptsetup close lvm-system 2>/dev/null; then
+    warn "Forcing LUKS closure..."
+    dmsetup remove --force lvm-system 2>/dev/null || true
+fi
+
+# Ensure all device mapper devices are gone
+sleep 2
+dmsetup remove_all --force 2>/dev/null || true
+# Final cleanup to prevent host shutdown issues
+show_progress "Final device cleanup..."
+sync && sync && sync
+sleep 2
+
+# Flush block device buffers
+blockdev --flushbufs "$TARGET_DISK" 2>/dev/null || true
+
+# Re-read partition table to clear any stale references
+partprobe "$TARGET_DISK" 2>/dev/null || true
+
+# Final sync
+sync
+sleep 1
+echo ""
+reop "=== Klartix installation complete! ==="
+reop "You can now reboot into your new Artix Linux system."
+info "Init system: $INIT_SYSTEM"
+info "User: $TARGET_USER"
+info "Encryption: LVM on LUKS2 with pbkdf2"
+if [ "$SEPARATE_HOME" = "1" ]; then
+    info "Home: Separate logical volume"
+else
+    info "Home: On root logical volume"
+fi
+info "Swap: zram"
+warn "You will be prompted for LUKS password at boot"
