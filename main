@@ -225,7 +225,7 @@ fi
 if im_groot; then
     if exec_args "KLARTIX"; then
         preop "Launching Klartix Artix Linux installer..."
-        "./${vase_d}/klar_tix/klartix" && exit
+        "./${vase_d}/klar_tix_lvm/klartix_lvm" && exit
     fi
     if exec_args "DESKTOP"; then
         preop "Launching Klartix Plasma desktop installer..."

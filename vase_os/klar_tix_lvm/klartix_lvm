@@ -12,7 +12,7 @@ if file_ex "${SCRIPT_DIR}/../../.vase.d/rcw"; then
 fi
 # Source cfg file
 . "${SCRIPT_DIR}/klartix.conf"
-# Simplified installation with LVM on LUKS
+# Installation with LVM on LUKS
 TOTAL_STEPS=26
 CURRENT_STEP=0
 # Progress bar function
