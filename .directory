@@ -1,7 +1,9 @@
 [Desktop Entry]
 Icon=folder-log
-# th: 11e1c78ba3f5147554afa79af217d153
+# th: c3711bdc13fd0abc74c521e239c8e5a5
 
+├── .claude
+│   └── settings.local.json
 ├── .github
 │   ├── hooks
 │   │   └── post-commit
@@ -82,7 +84,6 @@ Icon=folder-log
 ├── PKGBUILD
 ├── README.md
 ├── upd_rm
-├── util_f
-└── z_notes.md
+└── util_f
 
-18 directories, 65 files
+19 directories, 65 files

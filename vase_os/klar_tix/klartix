@@ -13,7 +13,7 @@ fi
 # Source cfg file
 . "${SCRIPT_DIR}/klartix.conf"
 # Simplified installation with LVM on LUKS
-TOTAL_STEPS=28
+TOTAL_STEPS=26
 CURRENT_STEP=0
 # Progress bar function
 show_progress() {
@@ -40,6 +40,7 @@ show_progress() {
     # Print step description below
     info "$step_desc"
 }
+VERBOSE=0
 #set -e  # Exit on error # Debug line
 # # Log file for debugging
 # LOG_FILE="./klartix_install_$(date +%Y%m%d_%H%M%S).log"
@@ -209,9 +210,10 @@ mkdir -p "$TARGET_MOUNT"
 # Partitioning - Simple 2-partition layout for LVM on LUKS
 show_progress "Partitioning $TARGET_DISK..."
 PARTED_OUTPUT=$(mktemp)
-# Two partitions: EFI + LUKS container for LVM
-parted -s -a cylinder "$TARGET_DISK" -- mklabel gpt \
-    mkpart primary fat32 1MiB "$EFI_SIZE" \
+# Two partitions: EFI + LUKS container for LVM 
+## For now we can just leave as ext4 the rest and reformat in later step
+parted -s -a optimal "$TARGET_DISK" -- mklabel gpt \
+    mkpart primary fat32 0% "$EFI_SIZE" \
     set 1 esp on \
     mkpart primary ext4 "$EFI_SIZE" 100% 2>&1 | tee "$PARTED_OUTPUT"
 # Check if kernel couldn't be informed about partition changes
@@ -223,7 +225,6 @@ if grep -q "unable to inform the kernel" "$PARTED_OUTPUT"; then
         info "Please do ONE of the following:"
     echo "  1. Unplug and replug the USB/disk"
     echo "  2. Reboot the system"
-    echo "  3. Run: sudo partprobe $TARGET_DISK && sudo blockdev --rereadpt $TARGET_DISK"
     nlp
         die "Cannot continue with stale partition table. Fix the issue above and try again."
 fi
@@ -240,13 +241,8 @@ else
 fi
 # Setup LVM on LUKS
 show_progress "Setting up LUKS2 with pbkdf2..."
-# Close any existing mappings from previous attempts
-vgchange -an lvmSystem 2>/dev/null || true
-cryptsetup close lvm-system 2>/dev/null || true
-dmsetup remove_all --force 2>/dev/null || true
 sleep 2
-
-# Wipe any existing signatures
+# Wipe any existing signatures from the drive
 wipefs -af "${TARGET_DISK}${PART_PREFIX}2" 2>/dev/null || true
 partprobe "${TARGET_DISK}" 2>/dev/null || true
 sleep 1
@@ -261,7 +257,6 @@ else
     printf "%s" "$LUKS_PASSWORD" | cryptsetup luksFormat --batch-mode --type luks2 --pbkdf pbkdf2 --iter-time 1000 --sector-size 512 --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" > /dev/null 2>&1 || die "Failed to create LUKS container"
     printf "%s" "$LUKS_PASSWORD" | cryptsetup open --key-file=- --keyfile-size="$PASS_LEN" "${TARGET_DISK}${PART_PREFIX}2" lvm-system > /dev/null 2>&1 || die "Failed to open LUKS container"
 fi
-
 # Setup LVM inside LUKS container
 show_progress "Setting up LVM volumes..."
 pvcreate /dev/mapper/lvm-system || die "Failed to create physical volume"
@@ -272,7 +267,6 @@ lvcreate -L 20G lvmSystem -n volRoot || die "Failed to create root volume"
 if [ "$SEPARATE_HOME" = "1" ]; then
     lvcreate -l +100%FREE lvmSystem -n volHome || die "Failed to create home volume"
 fi
-
 # Verify LUKS password by reopening
 show_progress "Verifying LUKS password..."
 vgchange -an lvmSystem || true
