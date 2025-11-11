@@ -339,9 +339,9 @@ show_progress "Setting bootstrap tool permissions..."
 chmod +x artix-bootstrap.sh
 show_progress "Bootstrapping Artix Linux with $INIT_SYSTEM..."
 if [ "$VERBOSE" = "1" ]; then
-    ./artix-bootstrap.sh -r "$MIRROR_URL" -i "$INIT_SYSTEM" "$TARGET_MOUNT"
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT"
 else
-    ./artix-bootstrap.sh -r "$MIRROR_URL" -i "$INIT_SYSTEM" "$TARGET_MOUNT" > /dev/null 2>&1
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT" > /dev/null 2>&1
 fi
 # At this point, artix-bootstrap should have set up the base system
 # Configure chroot mounts
@@ -375,14 +375,6 @@ fi
 show_progress "Creating chroot configuration script..."
 # Get LUKS partition UUID for LVM on LUKS
 LUKS_UUID=$(blkid -s UUID -o value "${TARGET_DISK}${PART_PREFIX}2")
-show_progress "Ckbcomp support..."
-# Copy ckbcomp for GRUB keymap generation if non-US layout
-if [ "$KB_LAYOUT" != "us" ]; then
-    info "Copying ckbcomp for GRUB keymap generation..."
-    mkdir -p "$TARGET_MOUNT/tmp/klartix_setup"
-    cp "${SCRIPT_DIR}/../grome_lum/lib/ckbcomp" "$TARGET_MOUNT/tmp/klartix_setup/"
-    chmod +x "$TARGET_MOUNT/tmp/klartix_setup/ckbcomp"
-fi
 
 cat > "$TARGET_MOUNT/configure.sh" << EOF
 #!/bin/bash
@@ -501,14 +493,6 @@ sed -i 's/^FILES=.*/FILES=(\/crypto_keyfile.bin)/' /etc/mkinitcpio.conf
 # Enable GRUB cryptodisk support for pbkdf2 LUKS2
 echo "GRUB_ENABLE_CRYPTODISK=y" >> /etc/default/grub
 
-# Configure GRUB keyboard layout if not US
-if [ "$KB_LAYOUT" != "us" ]; then
-    echo "GRUB_TERMINAL_INPUT=at_keyboard" >> /etc/default/grub
-else
-    echo "GRUB_TERMINAL_INPUT=console" >> /etc/default/grub
-fi
-echo "GRUB_TERMINAL_OUTPUT=console" >> /etc/default/grub
-
 # Setup zram for swap (Artix Linux)
 echo "Configuring zram swap for Artix..."
 
@@ -540,39 +524,6 @@ chown -R $TARGET_USER:$TARGET_USER /home/$TARGET_USER/VaseX
 echo "Regenerating initramfs with LVM on LUKS support..."
 mkinitcpio -P
 
-# Generate GRUB keymap if non-US layout (before grub-install)
-if [ "$KB_LAYOUT" != "us" ]; then
-    echo "Generating GRUB keymap for $KB_LAYOUT layout..."
-    mkdir -p /efi/grub/layouts
-
-    # Generate keymap using ckbcomp (supports ASCII 1-127 range for GRUB)
-    # Note: grub-mklayout will warn about extended characters (>127), which is expected
-    if [ -f /tmp/klartix_setup/ckbcomp ]; then
-        # Generate keymap with optional variant
-        if [ -n "\$KB_VARIANT" ]; then
-            echo "Generating GRUB keymap for \$KB_LAYOUT layout with variant: \$KB_VARIANT"
-            /tmp/klartix_setup/ckbcomp \$KB_LAYOUT \$KB_VARIANT 2>&1 | grub-mklayout -o /efi/grub/layouts/\$KB_LAYOUT.gkb 2>&1 | grep -v "unsupported keycode" || true
-        else
-            echo "Generating GRUB keymap for \$KB_LAYOUT layout (default variant)"
-            /tmp/klartix_setup/ckbcomp \$KB_LAYOUT 2>&1 | grub-mklayout -o /efi/grub/layouts/\$KB_LAYOUT.gkb 2>&1 | grep -v "unsupported keycode" || true
-        fi
-
-        # Check if keymap was generated successfully
-        if [ -f /efi/grub/layouts/\$KB_LAYOUT.gkb ] && [ -s /efi/grub/layouts/\$KB_LAYOUT.gkb ]; then
-            echo "Successfully generated GRUB keymap: \$KB_LAYOUT.gkb"
-        else
-            echo "ERROR: no valid keyboard layout found. Check the input."
-            echo "GRUB will use US layout for password entry."
-            rm -f /efi/grub/layouts/\$KB_LAYOUT.gkb
-        fi
-
-        # Clean up ckbcomp
-        rm -rf /tmp/klartix_setup
-    else
-        echo "ERROR: ckbcomp not found, cannot generate GRUB keymap"
-    fi
-fi
-
 # Install GRUB - use /efi as boot directory so grub.cfg is on unencrypted EFI partition
 
 grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --bootloader-id=Artix
@@ -580,14 +531,6 @@ grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --re
 
 # Generate grub.cfg on EFI partition (accessible before LUKS unlock)
 grub-mkconfig -o /efi/grub/grub.cfg
-
-# Add keymap loading to grub.cfg if non-US layout
-if [ "$KB_LAYOUT" != "us" ] && [ -f /efi/grub/layouts/$KB_LAYOUT.gkb ]; then
-    # Insert keymap commands at the beginning of grub.cfg (after initial setup)
-    # This ensures keymap is loaded before any LUKS password prompts
-    sed -i '/^### BEGIN \/etc\/grub.d\/00_header ###/a\\n# Load keyboard layout\\ninsmod keylayouts\\nkeymap /grub/layouts/'$KB_LAYOUT'.gkb' /efi/grub/grub.cfg
-    echo "Added keymap loading to /efi/grub/grub.cfg"
-fi
 
 # Lock root account if configured (last step in chroot)
 if [ "$LOCK_ROOT" = "1" ]; then

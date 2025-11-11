@@ -476,9 +476,9 @@ show_progress "Setting bootstrap tool permissions..."
 chmod +x artix-bootstrap.sh
 show_progress "Bootstrapping Artix Linux with $INIT_SYSTEM..."
 if [ "$VERBOSE" = "1" ]; then
-    ./artix-bootstrap.sh -r "$MIRROR_URL" -i "$INIT_SYSTEM" "$TARGET_MOUNT"
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT"
 else
-    ./artix-bootstrap.sh -r "$MIRROR_URL" -i "$INIT_SYSTEM" "$TARGET_MOUNT" > /dev/null 2>&1
+    ./artix-bootstrap.sh -i "$INIT_SYSTEM" "$TARGET_MOUNT" > /dev/null 2>&1
 fi
 # At this point, artix-bootstrap should have set up the base system
 # Configure chroot mounts
