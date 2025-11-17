@@ -15,7 +15,25 @@ echo "=== Updating system ==="
 pacman -Syu --noconfirm
 
 echo "=== Installing KDE Plasma ==="
-pacman -S --noconfirm --needed plasma${KLAGAN_MODE} wayland sddm sddm-runit plasma-nm
+# Install init-specific SDDM package
+case "$INIT_SYSTEM" in
+    openrc)
+        pacman -S --noconfirm --needed plasma${KLAGAN_MODE} wayland sddm sddm-openrc plasma-nm
+        ;;
+    runit)
+        pacman -S --noconfirm --needed plasma${KLAGAN_MODE} wayland sddm sddm-runit plasma-nm
+        ;;
+    s6)
+        pacman -S --noconfirm --needed plasma${KLAGAN_MODE} wayland sddm sddm-s6 plasma-nm
+        ;;
+    dinit)
+        pacman -S --noconfirm --needed plasma${KLAGAN_MODE} wayland sddm sddm-dinit plasma-nm
+        ;;
+    *)
+        echo "ERROR: Unknown init system: $INIT_SYSTEM"
+        exit 1
+        ;;
+esac
 
 # nice to haves
 pacman -S --noconfirm --needed konsole ark dolphin
@@ -115,5 +133,22 @@ chmod +x "/home/$SUDO_USER/.config/autostart/pipewire.desktop"
 
 echo "=== Installation complete! ==="
 
-echo "=== Enabling services! ==="
-ln -sf /etc/runit/sv/sddm /run/runit/service/
+echo "=== Enabling SDDM service for $INIT_SYSTEM ==="
+case "$INIT_SYSTEM" in
+    openrc)
+        rc-update add sddm default
+        ;;
+    runit)
+        ln -sf /etc/runit/sv/sddm /run/runit/service/
+        ;;
+    s6)
+        s6-rc-bundle-update add default sddm
+        ;;
+    dinit)
+        dinitctl enable sddm
+        ;;
+    *)
+        echo "ERROR: Unknown init system: $INIT_SYSTEM"
+        exit 1
+        ;;
+esac
