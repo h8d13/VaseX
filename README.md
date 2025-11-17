@@ -40,7 +40,7 @@ Go to `cd VaseX`
 Set up plasma & drivers: `sudo ./main -kpe`  
 - Install: `sudo ./main -kde` *On the target*
 
-Runtime (Using Klagan mode 430.92 mb plasma install on disk total with drivers, browser, essentials 2.95 GiB on Ext4): about 150 seconds
+Runtime (Using Klagan mode 430.92 mb plasma install, on disk total with drivers, browser, essentials 2.95 GiB on Ext4): about 150 seconds
 
 Useful if your submodules are out of sync
 ```
