@@ -229,7 +229,7 @@ if im_groot; then
     fi
     if exec_args "DESKTOP"; then
         preop "Launching Klartix Plasma desktop installer..."
-        "./${vase_d}/klar_tix/klartix_plasma" && exit
+        "./${vase_d}/klar_tix_lvm/klartix_plasma" && exit
     fi
     # Use reop for regular operation green output
     if im_sudo; then

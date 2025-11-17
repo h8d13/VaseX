@@ -14,7 +14,7 @@ fi
 MISSING=()
 # Core packages required for Klartix installations
 # These are needed on the HOST system to run the Klartix installer
-PACKAGES="git archiso gnupg squashfs-tools jq tree wget parted lvm2 cryptsetup"
+PACKAGES="git gnupg jq tree wget parted lvm2 cryptsetup"
 
 # Filesystem tools (optional based on TARGET_FS in klartix.conf)
 # Add these if using non-ext4 filesystems:
