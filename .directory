@@ -1,9 +1,7 @@
 [Desktop Entry]
 Icon=folder-log
-# th: c3711bdc13fd0abc74c521e239c8e5a5
+# th: f7d9791e3aea0417876215f6d39857b9
 
-├── .claude
-│   └── settings.local.json
 ├── .github
 │   ├── hooks
 │   │   └── post-commit
@@ -23,38 +21,23 @@ Icon=folder-log
 │   │   ├── grub_passw
 │   │   └── grub_rescue
 │   ├── kaes_arch
-│   │   ├── assets
-│   │   │   ├── guides
-│   │   │   │   ├── avoid_bricks.sh
-│   │   │   │   ├── profile_code.sh
-│   │   │   │   ├── profile_git.sh
-│   │   │   │   └── very_nerds.sh
-│   │   │   ├── easy.kksrc
-│   │   │   ├── kaes-logo.png
-│   │   │   └── post_theme_broken
-│   │   ├── cli_art
-│   │   ├── CONTRIBUTING.md
+│   ├── klar_tix_lvm
 │   │   ├── .directory
-│   │   ├── .gitignore
-│   │   ├── LICENSE
-│   │   ├── post
-│   │   └── README.md
-│   ├── klar_tix
-│   │   ├── .directory
-│   │   ├── klartix
 │   │   ├── klartix.conf
+│   │   ├── klartix_lvm
 │   │   ├── klartix_plasma
-│   │   └── klatrix_sound
-│   ├── pacto_pac
-│   │   ├── lib
-│   │   │   ├── stylepac.py
-│   │   │   ├── update-checker.sh
-│   │   │   └── update-checker-uninstall.sh
+│   │   ├── klatrix_sound
+│   │   ├── symbols-202511.json
+│   │   └── validate_keymap.sh
+│   ├── klar_tix_nolvm
 │   │   ├── .directory
-│   │   ├── .gitignore
-│   │   ├── lazy.py
-│   │   ├── LICENSE
-│   │   └── main.py
+│   │   ├── klartix.conf
+│   │   ├── klartix_desktop
+│   │   ├── klartix_luks
+│   │   ├── klatrix_sound
+│   │   ├── symbols-202511.json
+│   │   └── validate_keymap.sh
+│   ├── pacto_pac
 │   ├── zazu_lago
 │   │   ├── a
 │   │   │   └── .directory
@@ -86,4 +69,4 @@ Icon=folder-log
 ├── upd_rm
 └── util_f
 
-19 directories, 65 files
+16 directories, 51 files

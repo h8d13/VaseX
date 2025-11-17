@@ -66,6 +66,21 @@ case "$TARGET_FS" in
         PKGS="$PKGS f2fs-tools"
         ;;
 esac
+
+# Source and run keyboard layout validation
+. "${SCRIPT_DIR}/validate_keymap.sh"
+nlp
+info "Validating keyboard configuration..."
+if ! validate_keyboard_layout "$VCONSOLE_KB" "$KB_VARIANT"; then
+    nlp
+    warn "Keyboard layout validation failed!"
+    read -p "Continue anyway? [y/N]: " continue_anyway
+    if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+        die "Installation cancelled. Please fix keyboard layout in klartix.conf"
+    fi
+fi
+nlp
+
 obanner "Klartix - Artix Linux Bootstrap Installer"
 nlp
 # Show available disks first
@@ -107,6 +122,20 @@ if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
 fi
 nlp
 cbanner "Klartix - Artix Linux Bootstrap Installer"
+nlp
+info "Final target configuration:"
+echo "  Hostname:     $TARGET_HOSTNAME"
+echo "  User:         $TARGET_USER"
+echo "  Timezone:     $TARGET_TIMEZONE"
+echo "  Console KB:   $VCONSOLE_KB"
+echo "  GRUB KB:      $KB_LAYOUT${KB_VARIANT:+ ($KB_VARIANT)}"
+nlp
+cbanner "Klartix - Artix Linux Bootstrap Installer"
+read -p "Begin installation? [y/N]: " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    warn "Installation cancelled."
+    exit 0
+fi
 nlp
 # Now prompt for passwords and user after disk confirmation
 read -sp "Enter password for root: " ROOT_PASSWORD
@@ -180,19 +209,6 @@ case "$luks_choice" in
         die "Invalid choice. Please select 1, 2, or 3."
         ;;
 esac
-nlp
-info "Final configuration:"
-echo "  Hostname:     $TARGET_HOSTNAME"
-echo "  User:         $TARGET_USER"
-echo "  Timezone:     $TARGET_TIMEZONE"
-nlp
-cbanner "Klartix - Artix Linux Bootstrap Installer"
-read -p "Begin installation? [y/N]: " confirm
-if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    warn "Installation cancelled."
-    exit 0
-fi
-nlp
 # Here we'd set up trap 
 # Install required packages
 show_progress "Installing required packages on host..."
@@ -390,6 +406,8 @@ cat > "$TARGET_MOUNT/configure.sh" << EOF
 set -e
 
 # Pass configuration variables
+VCONSOLE_KB="$VCONSOLE_KB"
+VCONSOLE_FONT="$VCONSOLE_FONT"
 KB_LAYOUT="$KB_LAYOUT"
 KB_VARIANT="$KB_VARIANT"
 LOCK_ROOT="$LOCK_ROOT"
@@ -408,23 +426,9 @@ hwclock --systohc
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-# Console keymap
-echo "KEYMAP=$KB_LAYOUT" > /etc/vconsole.conf
-
-# Enable keymaps service for init system
-case "$INIT_SYSTEM" in
-    openrc)
-        # Configure OpenRC keymaps service
-        echo "keymap=\"\$KB_LAYOUT\"" > /etc/conf.d/keymaps
-        rc-update add keymaps boot
-        ;;
-    runit)
-        # Runit loads from vconsole.conf automatically via agetty
-        ;;
-    s6|dinit)
-        # These typically load from vconsole.conf
-        ;;
-esac
+# Console keymap and font
+echo "KEYMAP=$VCONSOLE_KB" > /etc/vconsole.conf
+echo "FONT=$VCONSOLE_FONT" >> /etc/vconsole.conf
 
 # Hostname
 echo "$TARGET_HOSTNAME" > /etc/hostname

@@ -74,6 +74,21 @@ esac
 if [ "$ENABLE_LUKS" = "1" ]; then
     PKGS="$PKGS cryptsetup"
 fi
+
+# Source and run keyboard layout validation
+. "${SCRIPT_DIR}/validate_keymap.sh"
+nlp
+info "Validating keyboard configuration..."
+if ! validate_keyboard_layout "$VCONSOLE_KB" "$KB_VARIANT"; then
+    nlp
+    warn "Keyboard layout validation failed!"
+    read -p "Continue anyway? [y/N]: " continue_anyway
+    if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+        die "Installation cancelled. Please fix keyboard layout in klartix.conf"
+    fi
+fi
+nlp
+
 obanner "Klartix - Artix Linux Bootstrap Installer"
 nlp
 # Show available disks first
@@ -573,6 +588,8 @@ cat > "$TARGET_MOUNT/configure.sh" << EOF
 set -e
 
 # Pass configuration variables
+VCONSOLE_KB="$VCONSOLE_KB"
+VCONSOLE_FONT="$VCONSOLE_FONT"
 KB_LAYOUT="$KB_LAYOUT"
 KB_VARIANT="$KB_VARIANT"
 LOCK_ROOT="$LOCK_ROOT"
@@ -591,24 +608,9 @@ hwclock --systohc
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-# Console keymap
-echo "KEYMAP=$KB_LAYOUT" > /etc/vconsole.conf
-
-# Enable keymaps service for init system
-case "$INIT_SYSTEM" in
-    openrc)
-        # Configure OpenRC keymaps service
-        echo "keymap=\"\$KB_LAYOUT\"" > /etc/conf.d/keymaps
-        rc-update add keymaps boot
-        ;;
-    runit)
-        # Runit loads from vconsole.conf automatically via agetty
-        ;;
-    s6|dinit)
-        # These typically load from vconsole.conf
-        ;;
-esac
-
+# Console keymap and font
+echo "KEYMAP=$VCONSOLE_KB" > /etc/vconsole.conf
+echo "FONT=$VCONSOLE_FONT" >> /etc/vconsole.conf
 # Hostname
 echo "$TARGET_HOSTNAME" > /etc/hostname
 echo "127.0.0.1 localhost" > /etc/hosts
