@@ -71,7 +71,7 @@ esac
 . "${SCRIPT_DIR}/validate_keymap.sh"
 nlp
 info "Validating keyboard configuration..."
-if ! validate_keyboard_layout "$VCONSOLE_KB" "$KB_LAYOUT" "$KB_VARIANT"; then
+if ! validate_keyboard_layout "" "$KB_LAYOUT" "$KB_VARIANT"; then
     nlp
     warn "Keyboard layout validation failed!"
     read -p "Continue anyway? [y/N]: " continue_anyway
@@ -126,8 +126,7 @@ nlp
 info "Final target configuration:"
 echo "  Hostname:     $TARGET_HOSTNAME"
 echo "  Timezone:     $TARGET_TIMEZONE"
-echo "  Console KB:   $VCONSOLE_KB"
-echo "  GRUB KB:      $KB_LAYOUT${KB_VARIANT:+ ($KB_VARIANT)}"
+echo "  Keyboard:     $KB_LAYOUT${KB_VARIANT:+ ($KB_VARIANT)}"
 nlp
 cbanner "Klartix - Artix Linux Bootstrap Installer"
 read -p "Begin installation? [y/N]: " confirm
@@ -415,8 +414,6 @@ cat > "$TARGET_MOUNT/configure.sh" << EOF
 set -e
 
 # Pass configuration variables
-VCONSOLE_KB="$VCONSOLE_KB"
-VCONSOLE_FONT="$VCONSOLE_FONT"
 KB_LAYOUT="$KB_LAYOUT"
 KB_VARIANT="$KB_VARIANT"
 LOCK_ROOT="$LOCK_ROOT"
@@ -435,24 +432,6 @@ hwclock --systohc
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-# Console keymap and font - configure based on init system
-case "$INIT_SYSTEM" in
-    openrc)
-        # OpenRC uses /etc/conf.d/keymaps
-        echo "keymap=\"$VCONSOLE_KB\"" > /etc/conf.d/keymaps
-        echo "# Additional options" >> /etc/conf.d/keymaps
-        echo "windowkeys=\"YES\"" >> /etc/conf.d/keymaps
-        echo "extended_keymaps=\"\"" >> /etc/conf.d/keymaps
-        echo "dumpkeys_charset=\"\"" >> /etc/conf.d/keymaps
-        # Also set console font in /etc/conf.d/consolefont
-        echo "consolefont=\"$VCONSOLE_FONT\"" > /etc/conf.d/consolefont
-        ;;
-    runit|s6|dinit)
-        # Runit, s6, and dinit use /etc/vconsole.conf
-        echo "KEYMAP=$VCONSOLE_KB" > /etc/vconsole.conf
-        echo "FONT=$VCONSOLE_FONT" >> /etc/vconsole.conf
-        ;;
-esac
 
 # Hostname
 echo "$TARGET_HOSTNAME" > /etc/hostname

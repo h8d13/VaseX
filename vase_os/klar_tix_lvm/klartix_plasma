@@ -132,6 +132,30 @@ EOF
 
 chmod +x "/home/$SUDO_USER/.config/autostart/pipewire.desktop"
 
+echo "=== Setting up keyboard layouts ==="
+# Configure KDE Plasma keyboard layout
+mkdir -p "/home/$SUDO_USER/.config"
+cat > "/home/$SUDO_USER/.config/kxkbrc" << EOF
+[Layout]
+LayoutList=$KB_LAYOUT
+Use=True
+EOF
+
+# Only add VariantList if KB_VARIANT is not empty
+if [ -n "$KB_VARIANT" ]; then
+    echo "VariantList=$KB_VARIANT" >> "/home/$SUDO_USER/.config/kxkbrc"
+fi
+
+# Configure SDDM keyboard layout via Xsetup script
+mkdir -p "/usr/share/sddm/scripts/"
+cat > /usr/share/sddm/scripts/Xsetup << EOF
+#!/bin/sh
+setxkbmap "$KB_LAYOUT" ${KB_VARIANT:+"-variant" "$KB_VARIANT"}
+EOF
+chmod +x /usr/share/sddm/scripts/Xsetup
+
+# Fix ownership of user config files
+chown -R "$SUDO_USER:$SUDO_USER" "/home/$SUDO_USER/.config"
 
 echo "=== Installation complete! ==="
 

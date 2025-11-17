@@ -98,23 +98,28 @@ validate_keyboard_layout() {
     echo "=================================="
     echo "X11 Layout:      $x11_layout"
     echo "X11 Variant:     ${x11_variant:-<default>}"
-    echo "Console Keymap:  $console_keymap"
+    if [ -n "$console_keymap" ]; then
+        echo "Console Keymap:  $console_keymap"
+    fi
     echo "=================================="
     echo ""
 
-    local console_valid=0
+    local console_valid=1  # Default to valid if not checked
     local x11_valid=0
 
-    # Validate console keymap
-    echo "Checking console keymap..."
-    if validate_console_keymap "$console_keymap"; then
-        console_valid=1
+    # Validate console keymap only if provided
+    if [ -n "$console_keymap" ]; then
+        console_valid=0
+        echo "Checking console keymap..."
+        if validate_console_keymap "$console_keymap"; then
+            console_valid=1
+        fi
+        echo ""
     fi
-    echo ""
 
     # Validate X11 layout if requested
     if [ "$check_x11" = "true" ]; then
-        echo "Checking X11 layout (for GRUB ckbcomp)..."
+        echo "Checking X11 layout (for GRUB ckbcomp, SDDM, and KDE Plasma)..."
         if validate_x11_layout_json "$x11_layout" "$x11_variant"; then
             x11_valid=1
         fi
@@ -133,7 +138,6 @@ validate_keyboard_layout() {
         echo ""
         echo -e "${YELLOW}Recommendation:${NC}"
         echo "Check your keyboard configuration in klartix.conf:"
-        echo "  VCONSOLE_KB=\"$console_keymap\""
         echo "  KB_LAYOUT=\"$x11_layout\""
         echo "  KB_VARIANT=\"$x11_variant\""
         return 1
