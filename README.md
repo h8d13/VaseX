@@ -38,7 +38,7 @@ Set up plasma & drivers: `sudo ./main -kpe`
 
 Runtime (Using Klagan mode 430.92 mb plasma install): about 150 seconds
 
-Useful if your sobmodules are out of sync
+Useful if your submodules are out of sync
 ```
   # git submodule update --remote 
   # or reclone everything fresh: rm -rf VaseX
@@ -50,4 +50,3 @@ Useful if your sobmodules are out of sync
 - https://wiki.artixlinux.org/Main/InstallationWithFullDiskEncryption
 - https://github.com/paulphys/artix-fde
 
-Useful if your submodules are out of sync

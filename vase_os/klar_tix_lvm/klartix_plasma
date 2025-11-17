@@ -36,7 +36,7 @@ case "$INIT_SYSTEM" in
 esac
 
 # nice to haves
-pacman -S --noconfirm --needed konsole ark dolphin
+pacman -S --noconfirm --needed konsole ark dolphin plasma-pa kscreen
 
 # or full apps (heavy)
 #pacman -S kde-applications
