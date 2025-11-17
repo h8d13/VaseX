@@ -45,27 +45,6 @@ else
 fi
 
 # ============================================================================
-# DEPENDENCY CATEGORIES & DETAILED DOCUMENTATION
-# ============================================================================
-#
-# [BUILD]   - ISO creation (iso_mod)
-# [INSTALL] - Klartix installer runtime (klar_tix_lvm, klar_tix_nolvm)
-# [VM]      - VM testing (has its own dep check: ./zazu_lago/setup_vms)
-# [CORE]    - Core system dependencies (usually pre-installed in base system)
-
-# ============================================================================
-# BUILD DEPENDENCIES (ISO Creation)
-# ============================================================================
-# [BUILD] archiso                    - Base ISO building framework
-# [BUILD] squashfs-tools             - ISO compression (mksquashfs via mkarchiso)
-# [BUILD] git                        - Version control, file filtering (ls-files)
-# [BUILD] gnupg                      - ISO signing, GPG key management
-# [BUILD] pacman                     - Package manager (download/install packages)
-# [BUILD] repo-add                   - Create local package repositories
-# [BUILD] tar                        - Archive creation for airootfs
-# [BUILD] sed, awk, grep             - Text processing for configs
-
-# ============================================================================
 # KLARTIX INSTALLER DEPENDENCIES (Host System Requirements)
 # ============================================================================
 # These packages must be installed on the HOST system running the installer

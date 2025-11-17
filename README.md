@@ -1,6 +1,12 @@
 # VaseX - Artix
 
-> Assumes x86_64 UEFI. 
+> Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation.
+> Deps are listed `vase_os/mindeps` and in `klartix.conf`
+```
+PKG_MAN="pacman"
+PKG_MAN_W="-S"
+ARG1="--noconfirm --needed"
+```
 
 Setups FDE with GRUB2 LUKS2 (PKBF2) on LVM. 
 
@@ -16,8 +22,6 @@ So no dead keys or advanced input method. Also there is no keymap change hotkey.
 In practice it makes difficult to enter any text using non-Latin alphabet. 
 Moreover all current input consumers are limited to ASCII. 
 ```
-
-> No ISO needed works from any existing Linux installation.
 
 Using bash only and the official [ArtixBootstrap Tool](https://gitea.artixlinux.org/artix/artix-bootstrap/)
 
