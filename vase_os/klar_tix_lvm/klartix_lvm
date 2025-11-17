@@ -376,10 +376,6 @@ mount -t sysfs /sys "$TARGET_MOUNT/sys"
 mount -o bind /dev "$TARGET_MOUNT/dev"
 mount -o bind /dev/pts "$TARGET_MOUNT/dev/pts"
 # Mount efivarfs since we assume UEFI systems
-show_progress "Copying host UEFI vars..."
-if [ -d /sys/firmware/efi/efivars ]; then
-    mount -t efivarfs efivarfs "$TARGET_MOUNT/sys/firmware/efi/efivars" 2>/dev/null || true
-fi
 show_progress "Copying host resolv.conf..."
 cp /etc/resolv.conf "$TARGET_MOUNT/etc/"
 # Generate fstab for LVM on LUKS
@@ -603,8 +599,6 @@ if [ "$KB_LAYOUT" != "us" ]; then
 fi
 
 # Install GRUB - use /efi as boot directory so grub.cfg is on unencrypted EFI partition
-
-grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --bootloader-id=Artix
 grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --removable
 
 # Generate grub.cfg on EFI partition (accessible before LUKS unlock)
