@@ -1,6 +1,6 @@
 [Desktop Entry]
 Icon=folder-log
-# th: 4c264a4f33cf50655d47b24288f72aa5
+# th: 5cac09b1a38079c9029928c1b8fae4a1
 
 ├── .github
 │   ├── hooks
@@ -17,19 +17,46 @@ Icon=folder-log
 │   │   │   └── grub
 │   │   ├── .directory
 │   │   ├── grome_lum
-│   │   ├── grub_keymaps
-│   │   ├── grub_passw
-│   │   └── grub_rescue
+│   │   └── grub_passw
 │   ├── kaes_arch
+│   │   ├── assets
+│   │   │   ├── guides
+│   │   │   │   ├── avoid_bricks.sh
+│   │   │   │   ├── profile_code.sh
+│   │   │   │   ├── profile_git.sh
+│   │   │   │   └── very_nerds.sh
+│   │   │   ├── easy.kksrc
+│   │   │   └── kaes-logo.png
+│   │   ├── .directory
+│   │   ├── .gitignore
+│   │   ├── LICENSE
+│   │   ├── post_gnome
+│   │   ├── post_hypr
+│   │   ├── post_niri
+│   │   ├── post_plasma
+│   │   ├── post_sway
+│   │   ├── post_xfce4
+│   │   └── README.md
 │   ├── klar_tix_lvm
 │   │   ├── .directory
 │   │   ├── klartix.conf
 │   │   ├── klartix_lvm
 │   │   ├── klartix_plasma
 │   │   ├── klatrix_sound
+│   │   ├── post_plasma
 │   │   ├── symbols-202511.json
 │   │   └── validate_keymap.sh
 │   ├── pacto_pac
+│   │   ├── lib
+│   │   │   ├── stylepac.py
+│   │   │   ├── update-checker.sh
+│   │   │   └── update-checker-uninstall.sh
+│   │   ├── .directory
+│   │   ├── .gitignore
+│   │   ├── lazy.py
+│   │   ├── LICENSE
+│   │   ├── main.py
+│   │   └── README.md
 │   ├── zazu_lago
 │   │   ├── a
 │   │   │   └── .directory
@@ -58,7 +85,6 @@ Icon=folder-log
 ├── main
 ├── PKGBUILD
 ├── README.md
-├── upd_rm
 └── util_f
 
-15 directories, 44 files
+18 directories, 67 files

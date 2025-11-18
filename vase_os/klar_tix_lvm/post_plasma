@@ -412,6 +412,8 @@ alias la='ls --color=auto -a'
 alias l='ls --color=auto -CF'
 alias grep='grep --color=auto'
 alias diff='diff --color=auto'
+alias rm='rm -I'
+alias rmrf='rm -rf -I'
 EOF
 ########################################## BASH CONFIGURATION
 info "Setting up Bash..." 

@@ -35,8 +35,8 @@ case "$INIT_SYSTEM" in
         ;;
 esac
 
-# nice to haves
-pacman -S --noconfirm --needed konsole ark dolphin plasma-pa kscreen
+# nice to haves if using klagan mode
+pacman -S --noconfirm --needed konsole ark dolphin kcalc partitionmanager plasma-pa kscreen
 
 # or full apps (heavy)
 #pacman -S kde-applications
@@ -45,12 +45,12 @@ pacman -S --noconfirm --needed konsole ark dolphin plasma-pa kscreen
 
 # Hardware detection examples - uncomment and customize based on your system
 
-# CPU Microcode (choose one)
+################### CPU MICROCODE
 
 # pacman -S --noconfirm --needed ${HW_CPU_INTEL}
 # pacman -S --noconfirm --needed ${HW_CPU_AMD}
 
-## Graphics drivers (choose one based on your GPU)
+################### IN TREE MAINLINE
 
 # All open-source FALLBACK
 
@@ -85,6 +85,8 @@ pacman -S --noconfirm --needed konsole ark dolphin plasma-pa kscreen
 
 # pacman -S --noconfirm --needed ${HW_NVIDIA_PRIME}
 
+################### VMS
+
 # Virtual Machine QEMU/KVM
 
 # pacman -S --noconfirm --needed ${HW_VM_QEMU}
@@ -95,10 +97,11 @@ pacman -S --noconfirm --needed konsole ark dolphin plasma-pa kscreen
 
 # Audio firmware
 
-# pacman -S --noconfirm --needed ${HW_AUDIO_SOF}
-## Modern intel audio
-
 echo "=== Installing audio support ==="
+## Modern intel audio
+# pacman -S --noconfirm --needed ${HW_AUDIO_SOF}
+## Legacy support
+# pacman -S --noconfirm --needed ${HW_AUDIO_ALSA}
 # Minimal working pipewire setup
 # Add pipewire-alsa if you need ALSA compatibility
 pacman -S --noconfirm --needed pipewire pipewire-pulse wireplumber
@@ -155,6 +158,10 @@ chown -R "$SUDO_USER:$SUDO_USER" "/home/$SUDO_USER/.config"
 
 #echo "=== Installing Bluetooth support ==="
 #pacman -S --noconfirm bluez bluez-runit bluez-utils bluedevil
+
+#echo "=== Installing Ppd Laptop support ==="
+
+#pacman -S --noconfirm ${LAPTOP_DRIVERS}
 
 echo "=== Installation complete! ==="
 
