@@ -1,7 +1,9 @@
 [Desktop Entry]
 Icon=folder-log
-# th: 5cac09b1a38079c9029928c1b8fae4a1
+# th: c6bbe0cad43d8a258942e6708dce7691
 
+├── .claude
+│   └── settings.local.json
 ├── .github
 │   ├── hooks
 │   │   └── post-commit
@@ -18,25 +20,6 @@ Icon=folder-log
 │   │   ├── .directory
 │   │   ├── grome_lum
 │   │   └── grub_passw
-│   ├── kaes_arch
-│   │   ├── assets
-│   │   │   ├── guides
-│   │   │   │   ├── avoid_bricks.sh
-│   │   │   │   ├── profile_code.sh
-│   │   │   │   ├── profile_git.sh
-│   │   │   │   └── very_nerds.sh
-│   │   │   ├── easy.kksrc
-│   │   │   └── kaes-logo.png
-│   │   ├── .directory
-│   │   ├── .gitignore
-│   │   ├── LICENSE
-│   │   ├── post_gnome
-│   │   ├── post_hypr
-│   │   ├── post_niri
-│   │   ├── post_plasma
-│   │   ├── post_sway
-│   │   ├── post_xfce4
-│   │   └── README.md
 │   ├── klar_tix_lvm
 │   │   ├── .directory
 │   │   ├── klartix.conf
@@ -55,8 +38,7 @@ Icon=folder-log
 │   │   ├── .gitignore
 │   │   ├── lazy.py
 │   │   ├── LICENSE
-│   │   ├── main.py
-│   │   └── README.md
+│   │   └── main.py
 │   ├── zazu_lago
 │   │   ├── a
 │   │   │   └── .directory
@@ -87,4 +69,4 @@ Icon=folder-log
 ├── README.md
 └── util_f
 
-18 directories, 67 files
+16 directories, 51 files
