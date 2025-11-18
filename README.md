@@ -1,6 +1,6 @@
 # VaseX - Artix
 
->[!INFO]
+>[!NOTE]
 > Made for my friend Klagan who likes Runit's fast boot time and more control, also lower bandwidth usage.
 
 > Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation.
