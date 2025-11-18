@@ -12,7 +12,8 @@ Sets-up **FDE with GRUB2 LUKS2 (PKBF2) on LVM.**
 
 > Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation. Altho I've mostly tested from Arch ISO since I'm more familiar with it. I guess it could build on any provided deps are there.
 
-> Deps are listed `vase_os/mindeps` and in `klartix.conf` for pkg man definitions.
+> Deps are listed `vase_os/mindeps` and in `klartix.conf` for pkg man definitions. Please read through full `.conf` file and modify it to liking. [ConfFile](./vase_os/klar_tix_lvm/klartix.conf)
+
 ```
 PKG_MAN="pacman"
 PKG_MAN_W="-S"
