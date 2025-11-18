@@ -1,7 +1,7 @@
 # VaseX - Artix
 
 >[!NOTE]
-> Made for my friend Klagan who likes Runit's fast boot time and more control, also lower bandwidth usage.
+> Made for my friend Klagan who likes Runit's fast boot time and more control, also lower bandwidth usageby only having necessary packages. After full setup for my needs on a laptop: **Packages:** 684 (pacman), 6 (flatpak)
 
 > Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation.
 > Deps are listed `vase_os/mindeps` and in `klartix.conf`
