@@ -7,6 +7,9 @@ After full setup for my needs on a laptop: **Packages:** 684 (pacman), 6 (flatpa
 
 ## Modern Artix Setup 
 
+Sets-up **FDE with GRUB2 LUKS2 (PKBF2) on LVM.**
+
+
 > Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation. Altho I've mostly tested from Arch ISO since I'm more familiar with it. I guess it could build on any provided deps are there.
 
 > Deps are listed `vase_os/mindeps` and in `klartix.conf` for pkg man definitions.
@@ -15,8 +18,6 @@ PKG_MAN="pacman"
 PKG_MAN_W="-S"
 ARG1="--noconfirm --needed"
 ```
-
-Setups FDE with GRUB2 LUKS2 (PKBF2) on LVM. 
 
 And keymap support using [ckbcomp](https://aur.archlinux.org/packages/ckbcomp).
 Challenge came from the Grub2 [manual](https://www.gnu.org/software/grub/manual/grub/grub.html#Input-terminal) itself:
