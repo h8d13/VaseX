@@ -41,11 +41,9 @@ show_progress() {
     info "$step_desc"
 }
 VERBOSE=0
+ENABLE_LUKS=1 # Always enabled
 #set -e  # Exit on error # Debug line
-# # Log file for debugging
-# LOG_FILE="./klartix_install_$(date +%Y%m%d_%H%M%S).log"
-# exec > >(tee -a "$LOG_FILE") 2>&1
-# echo "Installation log: $LOG_FILE"
+
 # Empty Vars
 TARGET_DISK="" # Will be prompted
 TARGET_USER="" # Will be prompted
@@ -278,9 +276,11 @@ pvcreate /dev/mapper/lvm-system || die "Failed to create physical volume"
 vgcreate lvmSystem /dev/mapper/lvm-system || die "Failed to create volume group"
 
 # Create logical volumes
-lvcreate -L 20G lvmSystem -n volRoot || die "Failed to create root volume"
 if [ "$SEPARATE_HOME" = "1" ]; then
+    lvcreate -L $ROOT_SIZE lvmSystem -n volRoot || die "Failed to create root volume"
     lvcreate -l +100%FREE lvmSystem -n volHome || die "Failed to create home volume"
+else
+    lvcreate -l +100%FREE lvmSystem -n volRoot || die "Failed to create root volume"
 fi
 # Verify LUKS password by reopening
 show_progress "Verifying LUKS password..."
@@ -533,9 +533,6 @@ else
     echo "GRUB_TERMINAL_INPUT=console" >> /etc/default/grub
 fi
 echo "GRUB_TERMINAL_OUTPUT=console" >> /etc/default/grub
-
-# Setup zram for swap (Artix Linux)
-echo "Configuring zram swap for Artix..."
 
 # Create udev rule for zram
 mkdir -p /etc/udev/rules.d
