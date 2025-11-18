@@ -1,7 +1,11 @@
 # VaseX - Artix
 
 >[!NOTE]
-> Made for my friend Klagan who likes Runit's fast boot time and more control, also lower bandwidth usageby only having necessary packages. After full setup for my needs on a laptop: **Packages:** 684 (pacman), 6 (flatpak)
+> Made for my friend Klagan who likes Runit's fast boot time and more control, also lower bandwidth usage by only having necessary packages. 
+
+After full setup for my needs on a laptop: **Packages:** 684 (pacman), 6 (flatpak)
+
+## Modern Artix Setup 
 
 > Assumes x86_64 UEFI. Bit of weird project: No ISO needed works from any existing Linux installation. Altho I've mostly tested from Arch ISO since I'm more familiar with it. I guess it could build on any provided deps are there.
 
