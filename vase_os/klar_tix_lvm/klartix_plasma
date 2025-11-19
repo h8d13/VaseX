@@ -163,12 +163,11 @@ chown -R "$SUDO_USER:$SUDO_USER" "/home/$SUDO_USER/.config"
 
 #pacman -S --noconfirm ${LAPTOP_DRIVERS}
 
-echo "=== Installation complete! ==="
-
 echo "=== Enabling SDDM service for $INIT_SYSTEM ==="
 case "$INIT_SYSTEM" in
     openrc)
         rc-update add sddm default
+        #rc-update add power-profiles-daemon default
         ;;
     runit)
         ln -sf /etc/runit/sv/sddm /run/runit/service/
